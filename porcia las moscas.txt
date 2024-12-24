@@ -1,0 +1,153 @@
+
+import pygame, sys
+pygame.init()
+from paquete.logica_funciones import *
+from paquete.valores import *
+from paquete.pantalla_funciones import *
+import time
+mazo = cargar_mazo()
+catas_barejadas = barejear_cartas_jugador(mazo)
+
+
+mazo_j1 = catas_barejadas[0]
+mazo_j2 = catas_barejadas[1]
+
+
+baraja_j1 = []
+baraja_j2 = []
+
+
+baraja_j1.append(mazo_j1.pop(0))
+baraja_j2.append(mazo_j2.pop(0))
+
+jugadores = cargar_j1_y_j2(mazo_j1,mazo_j2,baraja_j1,baraja_j2)
+
+j1 = jugadores[0]
+j2 = jugadores[1]
+
+turno = 1
+jugadas = 0
+#*-----------------------
+
+pantalla = pygame.display.set_mode((ANCHO, ALTO))
+
+
+#fuente de los botones
+FUENTE_BOTONE = ("consolas", 35)
+
+
+#letrero del atriburo al mando (es un boton pero no hara nada, en pocas palabras un letrero)
+atrubuto_mando = ruleta_de_mando()
+letrero_atributo = crear_boton(pantalla,(0,100),(200,100),NEGRO,AMARILLO,("consolas", 35),atrubuto_mando)
+
+
+
+#boton para recargar una carta
+# boton_cargar_cart_j1 = crear_boton(pantalla,(700, 555),(200,100),("consolas", 35),"CARGAR")
+
+#botones para las tres cartas en baraja del jugador 1
+boton_jugar_carta1 = crear_boton(pantalla,(80, 555),(200,100),ROJO,AZUL,("consolas", 35),"JUGAR")
+# boton_jugar_carta2 = crear_boton(pantalla,(285, 555),(200,100),("consolas", 35),"JUGAR")
+# boton_jugar_carta3 = crear_boton(pantalla,(485, 555),(200,100),("consolas", 35),"JUGAR")
+
+#botones para las tres cartas en baraja del jugador 2
+boton_jugar_carta2 = crear_boton(pantalla,(80, 555),(200,100),AZUL,ROJO,("consolas", 35),"JUGAR")
+
+
+# Nueva variable para controlar el estado del temporizador
+mostrar_cartas = False
+tiempo_restante = 3  # Tiempo en segundos para mostrar las cartas jugadas
+inicio_temporizador = None  # Variable para registrar el tiempo inicial
+
+
+# Nueva variable para controlar si las cartas ya fueron comparadas
+comparadas = False
+# Nueva variable para controlar el estado del letrero de victoria
+mostrar_letrero = False
+inicio_letrero = 5  # Tiempo de inicio para mostrar el letrero
+
+while True:
+    eventos = pygame.event.get()
+    for evento in eventos:
+        if evento.type == pygame.QUIT:
+            sys.exit()
+        elif evento.type == pygame.MOUSEBUTTONDOWN:
+            x, y = evento.pos
+            print(f"Clic detectado en: ({x}, {y})")
+            if turno == 1:
+                if boton_jugar_carta1["Rectangulo"].collidepoint(evento.pos) and not mostrar_cartas:
+                    cart_jugada_j1 = jugar_carta(j1["Baraja"], 0)
+                    baraja_j1.append(mazo_j1.pop(0))
+                    jugadas += 1
+                    turno = 2
+            else:
+                if boton_jugar_carta2["Rectangulo"].collidepoint(evento.pos) and not mostrar_cartas:
+                    cart_jugada_j2 = jugar_carta(j2["Baraja"], 0)
+                    baraja_j2.append(mazo_j2.pop(0))
+                    jugadas += 1
+                    turno = 1
+
+    pantalla.fill(BLANCO)
+
+    if jugadas < 2:
+        comparadas = False
+        mostrar_letrero = False  # Ocultar el letrero al comenzar una nueva ronda
+        if turno == 1:
+            mostara_baraja_j1(baraja_j1, pantalla)
+            dibujar_boton(boton_jugar_carta1)
+        elif turno == 2:
+            mostara_baraja_j2(baraja_j2, pantalla)
+            dibujar_boton(boton_jugar_carta2)
+        dibujar_boton(letrero_atributo)
+    elif jugadas == 2 and not mostrar_cartas:
+        mostrar_cartas = True
+        inicio_temporizador = time.time()
+
+    if mostrar_cartas == True and mostrar_letrero == False and tiempo_restante > 0:
+        tiempo_transcurrido = time.time() - inicio_temporizador
+        tiempo_restante = max(0, 10 - int(tiempo_transcurrido))
+
+        rut_img_cartJugada_j1 = obtener_ruta_imagen(IMG_POKEMOS, cart_jugada_j1["Nombre"])
+        mostrar_carta_j1(pantalla, 100, 150, ANCHO_REC, ALTO_REC, rut_img_cartJugada_j1, (105, 155), TAMAÑO_IMG_REC, cart_jugada_j1, TAMAÑO_DE_TEXTO, (270, 300))
+
+        rut_img_cartJugada_j2 = obtener_ruta_imagen(IMG_POKEMOS, cart_jugada_j2["Nombre"])
+        mostrar_carta_j2(pantalla, 550, 150, ANCHO_REC, ALTO_REC, rut_img_cartJugada_j2, (555, 155), TAMAÑO_IMG_REC, cart_jugada_j2, TAMAÑO_DE_TEXTO, (720, 300))
+
+        fuente = pygame.font.SysFont("consolas", 35)
+        texto_temporizador = fuente.render(f"Tiempo: {tiempo_restante}s", True, NEGRO)
+        pantalla.blit(texto_temporizador, (ANCHO - texto_temporizador.get_width() - 20, 20))
+
+        if tiempo_restante <= 0:
+            mostrar_cartas = False
+            mostrar_letrero = True  # Cambiar al estado de mostrar el letrero
+            inicio_letrero = time.time()  # Registrar el momento de inicio del letrero
+
+            # Comparar las cartas después de que terminen los 10 segundos
+            resultado = comparar_cartas(cart_jugada_j1, cart_jugada_j2, atrubuto_mando)
+
+            if isinstance(resultado, list):
+                print("Ganador:")
+                print(resultado[0])
+                letrero_victoria = crear_boton(
+                    pantalla, (350, 400), (200, 100), NEGRO, AMARILLO, ("consolas", 35),
+                    resultado[0]["Nombre"] + " gana esta ronda"
+                )
+            elif resultado == False:
+                print("Elemento")
+            else:
+                print("Empate")
+
+            atrubuto_mando = ruleta_de_mando()
+            letrero_atributo = crear_boton(pantalla, (0, 100), (200, 100), NEGRO, AMARILLO, ("consolas", 35), atrubuto_mando)
+
+    if mostrar_letrero:
+        # Mostrar el letrero de victoria durante 5 segundos
+        tiempo_letrero = time.time() - inicio_letrero
+        if tiempo_letrero < 5:
+            dibujar_boton(letrero_victoria)
+        else:
+            mostrar_letrero = False  # Ocultar el letrero después de 5 segundos
+            jugadas = 0  # Reiniciar las jugadas para la siguiente ronda
+            turno = 1
+
+    pygame.display.flip()
